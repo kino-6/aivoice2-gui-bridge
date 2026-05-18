@@ -1,0 +1,13 @@
+# Copy this to aivoice2-gui-bridge.yml and adjust coordinates for your screen.
+# The local aivoice2-gui-bridge.yml file is gitignored because coordinates are machine-specific.
+
+app_name: "AIVoice2"
+activation_delay: 0.5
+
+actions:
+  prepare:
+    # Click inside the current sentence text field before pasting.
+    - click: [408, 198]
+  play:
+    # Click the playback button.
+    - click: [519, 532]

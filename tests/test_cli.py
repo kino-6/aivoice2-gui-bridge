@@ -4,6 +4,7 @@ from pathlib import Path
 
 from aivoice2_gui_bridge import cli
 from aivoice2_gui_bridge.cli import build_parser
+from aivoice2_gui_bridge.config import GuiAction
 
 
 def test_parse_speak_arguments() -> None:
@@ -128,3 +129,21 @@ actions:
     assert captured["activation_delay"] == 1.0
     assert captured["region"] == (5, 6, 700, 800)
     assert captured["text"] == "こんにちは"
+
+
+def test_required_image_assets_ignores_coordinate_actions() -> None:
+    required = cli._required_image_assets(
+        (GuiAction(click=(10, 20)),),
+        (GuiAction(click=(30, 40)),),
+    )
+
+    assert required == ()
+
+
+def test_required_image_assets_collects_configured_image_actions() -> None:
+    required = cli._required_image_assets(
+        (GuiAction(image="plus.png"), GuiAction(click=(10, 20))),
+        (GuiAction(image="play_all.png"), GuiAction(image="plus.png")),
+    )
+
+    assert required == ("plus.png", "play_all.png")

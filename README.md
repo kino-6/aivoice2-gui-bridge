@@ -6,7 +6,7 @@ backend on macOS.
 This is not an official A.I.VOICE2 API. It does not reverse engineer
 A.I.VOICE2 internals and does not assume an official automation API exists.
 It uses local GUI automation only: activate the app, paste text, and click
-buttons found by screenshot image matching.
+buttons either by fixed coordinates or screenshot image matching.
 
 The intended workflow is personal/local:
 
@@ -40,15 +40,28 @@ After granting permissions in System Settings, restart the terminal or IDE.
 uv sync
 ```
 
-Capture the required image assets from your own A.I.VOICE2 Editor UI and place
-them in `src/aivoice2_gui_bridge/assets`:
+For personal/local use, fixed coordinates are usually the easiest setup. Copy
+the example config and adjust the coordinates for your A.I.VOICE2 window:
 
-- `plus.png`
-- `trash.png`
-- `play_all.png`
+```sh
+cp aivoice2-gui-bridge.example.yml aivoice2-gui-bridge.yml
+```
 
-Keep crops tight and stable. Use the same display scaling, theme, and layout
-you will use when running the bridge.
+`aivoice2-gui-bridge.yml` is gitignored because coordinates are specific to
+your display, window position, and scaling.
+
+Image matching is still supported, but it requires local screenshots of
+A.I.VOICE2 buttons. Those images are not included in this repository because UI
+appearance can differ by version, theme, language, display scaling, and monitor.
+
+Quick start checklist:
+
+1. Run `uv sync`.
+2. Grant Accessibility and Screen Recording permission to the terminal/IDE that runs `uv run`.
+3. Start A.I.VOICE2 Editor and select the voice preset manually.
+4. Copy `aivoice2-gui-bridge.example.yml` to `aivoice2-gui-bridge.yml`.
+5. Adjust the `click: [x, y]` coordinates for your A.I.VOICE2 window.
+6. Run `uv run aivoice2-gui-bridge doctor`.
 
 ## Usage
 
@@ -114,6 +127,10 @@ The default `speak` sequence is:
 7. Restore the old clipboard unless `--no-restore-clipboard` is set.
 8. Click `play_all.png`.
 
+That default sequence uses image matching. If `aivoice2-gui-bridge.yml` exists,
+its `actions` replace the default sequence, so you can use fixed coordinates
+without any image assets.
+
 `--platform auto` is the default. It selects macOS on Darwin and Windows on
 Windows:
 
@@ -166,7 +183,31 @@ actions:
 CLI arguments override config values. For example, `--confidence 0.75` wins over
 `confidence: 0.85` in the file.
 
+Example coordinate-based config:
+
+```yaml
+app_name: "AIVoice2"
+activation_delay: 0.5
+actions:
+  prepare:
+    - click: [408, 198]
+  play:
+    - click: [519, 532]
+```
+
 ## How To Tune Image Matching
+
+Image matching means the CLI searches the current screenshot for a saved button
+crop, then clicks the center of the match. The default workflow uses these
+assets:
+
+- `plus.png`: the plus button near the top of the sentence list
+- `trash.png`: the trash/delete button near the top of the sentence list
+- `play_all.png`: the play button used to start playback
+
+On a default-looking A.I.VOICE2 Editor window, crop only the button icon and a
+small amount of surrounding background. Do not capture the whole toolbar or the
+whole window.
 
 Start with the default `--confidence 0.85`. If matching fails but the button is
 visible, try `--debug-screenshot` and inspect the saved screenshot to confirm
@@ -202,8 +243,9 @@ the command, then restart that app.
 
 ## Using Fixed Coordinates As A Fallback
 
-If image matching is unstable on your setup, define fixed coordinates in
-`aivoice2-gui-bridge.yml`:
+For this local/personal bridge, fixed coordinates are often preferable to image
+assets because they are simple text and do not require managing screenshots in
+git. Define them in `aivoice2-gui-bridge.yml`:
 
 ```yaml
 actions:
@@ -216,7 +258,12 @@ actions:
 
 Coordinates are absolute screen pixels, so they are sensitive to window
 position, display arrangement, and scaling. Keep the A.I.VOICE2 window in a
-consistent location when using this fallback.
+consistent location when using this mode.
+
+The tradeoff is straightforward: coordinates are easy to version as an example
+and easy to keep local, but they depend on your window position. Image matching
+is more flexible when the window moves, but the PNG assets are local binary
+files and can be awkward to review or share.
 
 ## Python API
 

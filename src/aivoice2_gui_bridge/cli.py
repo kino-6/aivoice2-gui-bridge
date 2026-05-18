@@ -14,6 +14,7 @@ from .config import (
     DEFAULT_PLAY_ACTIONS,
     DEFAULT_PREPARE_ACTIONS,
     ConfigError,
+    GuiAction,
     load_config,
     parse_region,
 )
@@ -197,9 +198,23 @@ def run_doctor(args: argparse.Namespace) -> int:
         if module_name == "cv2" and not module_ok:
             print("  PyAutoGUI confidence matching requires OpenCV. Run: uv sync")
 
-    for asset_name in REQUIRED_ASSETS:
+    required_image_assets = _required_image_assets(
+        tuple(config.prepare_actions) if config.prepare_actions else DEFAULT_PREPARE_ACTIONS,
+        tuple(config.play_actions) if config.play_actions else DEFAULT_PLAY_ACTIONS,
+    )
+
+    missing_assets: list[Path] = []
+    for asset_name in required_image_assets:
         path = assets_dir / asset_name
-        ok &= _report(f"asset exists: {asset_name}", path.exists(), str(path))
+        asset_exists = path.exists()
+        ok &= _report(f"asset exists: {asset_name}", asset_exists, str(path))
+        if not asset_exists:
+            missing_assets.append(path)
+
+    if missing_assets:
+        _print_asset_guidance(assets_dir)
+    elif not required_image_assets:
+        print("[ok] image assets not required by configured coordinate actions")
 
     screenshot_ok = _check_screenshot()
     ok &= screenshot_ok
@@ -233,6 +248,27 @@ def _check_screenshot() -> bool:
         return False
     print("[ok] screenshot can be taken")
     return True
+
+
+def _print_asset_guidance(assets_dir: Path) -> None:
+    print()
+    print("image asset guidance:")
+    print("- This tool does not ship A.I.VOICE2 button screenshots.")
+    print("- Capture small screenshots from your own A.I.VOICE2 Editor window and save them as:")
+    print(f"  - {assets_dir / 'plus.png'}")
+    print(f"  - {assets_dir / 'trash.png'}")
+    print(f"  - {assets_dir / 'play_all.png'}")
+    print("- These files are used by PyAutoGUI/OpenCV to find and click the matching buttons.")
+    print("- For local/personal use, fixed click coordinates are often easier to manage in git.")
+    print("- Copy aivoice2-gui-bridge.example.yml to aivoice2-gui-bridge.yml and adjust coordinates.")
+
+
+def _required_image_assets(prepare_actions: Sequence[GuiAction], play_actions: Sequence[GuiAction]) -> tuple[str, ...]:
+    image_names: list[str] = []
+    for action in (*prepare_actions, *play_actions):
+        if action.image is not None:
+            image_names.append(action.image)
+    return tuple(dict.fromkeys(image_names))
 
 
 def _parse_region_arg(value: str) -> tuple[int, int, int, int]:

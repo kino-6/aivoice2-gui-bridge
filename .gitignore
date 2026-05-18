@@ -1,5 +1,7 @@
 # Byte-compiled / optimized / DLL files
 .debug/
+aivoice2-gui-bridge.yml
+aivoice2-gui-bridge.local.yml
 __pycache__/
 *.py[codz]
 *$py.class
