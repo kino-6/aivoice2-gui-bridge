@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import logging
 import platform as platform_module
+import subprocess
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -33,6 +34,8 @@ REQUIRED_ASSETS = ("plus.png", "trash.png", "play_all.png")
 DEFAULT_CONFIDENCE = 0.85
 DEFAULT_TIMEOUT = 5.0
 DEFAULT_ACTIVATION_DELAY = 0.5
+DEFAULT_POST_PASTE_DELAY = 0.8
+DEFAULT_SELECT_ALL_BEFORE_PASTE = False
 PLATFORM_CHOICES = ("auto", "macos", "windows")
 
 
@@ -126,6 +129,8 @@ def run_speak(args: argparse.Namespace) -> int:
     confidence = args.confidence if args.confidence is not None else config.confidence
     timeout = args.timeout if args.timeout is not None else config.timeout
     activation_delay = args.activation_delay if args.activation_delay is not None else config.activation_delay
+    post_paste_delay = config.post_paste_delay
+    select_all_before_paste = config.select_all_before_paste
     region = args.region if args.region is not None else config.region
     prepare_actions = tuple(config.prepare_actions) if config.prepare_actions else DEFAULT_PREPARE_ACTIONS
     play_actions = tuple(config.play_actions) if config.play_actions else DEFAULT_PLAY_ACTIONS
@@ -145,6 +150,14 @@ def run_speak(args: argparse.Namespace) -> int:
         region=region,
         debug_screenshot=args.debug_screenshot,
         activation_delay=actual_activation_delay,
+        post_paste_delay=post_paste_delay if post_paste_delay is not None else DEFAULT_POST_PASTE_DELAY,
+        select_all_before_paste=(
+            select_all_before_paste
+            if select_all_before_paste is not None
+            else DEFAULT_SELECT_ALL_BEFORE_PASTE
+        ),
+        window_position=config.window_position,
+        window_size=config.window_size,
         restore_clipboard=not args.no_restore_clipboard,
         dry_run=args.dry_run,
         prepare_actions=prepare_actions,
@@ -219,6 +232,9 @@ def run_doctor(args: argparse.Namespace) -> int:
     screenshot_ok = _check_screenshot()
     ok &= screenshot_ok
 
+    if selected_platform == "macos":
+        ok &= _check_macos_accessibility()
+
     print()
     print(f"{selected_platform} permissions guidance:")
     for line in platform_controller.permission_guidance().splitlines():
@@ -248,6 +264,29 @@ def _check_screenshot() -> bool:
         return False
     print("[ok] screenshot can be taken")
     return True
+
+
+def _check_macos_accessibility() -> bool:
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", 'tell application "System Events" to get UI elements enabled'],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception as exc:
+        print(
+            "[missing] accessibility automation check "
+            f"({exc}; grant Accessibility permission to the terminal/IDE/Python runner)"
+        )
+        return False
+
+    enabled = result.stdout.strip().lower() == "true"
+    if enabled:
+        print("[ok] accessibility automation enabled")
+        return True
+    print("[missing] accessibility automation enabled (System Events returned false)")
+    return False
 
 
 def _print_asset_guidance(assets_dir: Path) -> None:

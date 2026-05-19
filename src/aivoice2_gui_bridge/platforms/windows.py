@@ -29,3 +29,19 @@ class WindowsPlatformController:
             "Windows support is planned/experimental.\n"
             "The placeholder backend uses Ctrl+V as the paste hotkey, but app activation is not implemented yet."
         )
+
+    def set_window_bounds(
+        self,
+        app_name: str,
+        *,
+        position: tuple[int, int] | None = None,
+        size: tuple[int, int] | None = None,
+    ) -> None:
+        raise UnsupportedPlatformError(
+            f'Windows window positioning is not implemented yet for "{app_name}".'
+        )
+
+    def get_window_origin(self, app_name: str) -> tuple[int, int]:
+        raise UnsupportedPlatformError(
+            f'Windows window origin lookup is not implemented yet for "{app_name}".'
+        )

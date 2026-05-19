@@ -3,11 +3,18 @@
 
 app_name: "AIVoice2"
 activation_delay: 0.5
+post_paste_delay: 0.8
+select_all_before_paste: true
+
+window:
+  # Keep A.I.VOICE2 in a stable place before clicking offsets.
+  position: [0, 25]
+  size: [1328, 760]
 
 actions:
   prepare:
-    # Click inside the current sentence text field before pasting.
-    - click: [408, 198]
+    # Click inside the current sentence text field, relative to the window's top-left.
+    - click_offset: [408, 173]
   play:
-    # Click the playback button.
-    - click: [519, 532]
+    # Click the playback button, relative to the window's top-left.
+    - click_offset: [512, 524]

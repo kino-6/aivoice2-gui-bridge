@@ -13,8 +13,9 @@ Capture small, stable crops from your own A.I.VOICE2 Editor UI and save them her
 - `play_all.png`: the play-all button
 
 Without these files, `aivoice2-gui-bridge speak ...` cannot use the default
-image-based actions. For local/personal use, fixed coordinates through
-`aivoice2-gui-bridge.yml` are often easier and avoid managing PNG files in git.
+image-based actions. For local/personal use, window-relative `click_offset`
+coordinates through `aivoice2-gui-bridge.yml` are often easier and avoid
+managing PNG files in git.
 
 Tips:
 

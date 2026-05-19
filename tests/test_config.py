@@ -15,7 +15,12 @@ app_name: "A.I.VOICE2 Editor"
 confidence: 0.8
 timeout: 4
 activation_delay: 1.2
+post_paste_delay: 0.9
+select_all_before_paste: true
 region: "10,20,300,400"
+window:
+  position: [0, 25]
+  size: [1328, 760]
 actions:
   prepare:
     - image: plus.png
@@ -32,7 +37,11 @@ actions:
     assert config.confidence == 0.8
     assert config.timeout == 4.0
     assert config.activation_delay == 1.2
+    assert config.post_paste_delay == 0.9
+    assert config.select_all_before_paste is True
     assert config.region == (10, 20, 300, 400)
+    assert config.window_position == (0, 25)
+    assert config.window_size == (1328, 760)
     assert [action.image for action in config.prepare_actions] == ["plus.png", "trash.png"]
     assert config.play_actions[0].image == "play_all.png"
 
@@ -51,6 +60,23 @@ def test_parse_config_parses_coordinate_actions() -> None:
     assert config.play_actions[0].click == (500, 800)
 
 
+def test_parse_config_parses_window_offset_actions() -> None:
+    config = parse_config(
+        {
+            "window": {"position": [0, 25], "size": [1328, 760]},
+            "actions": {
+                "prepare": [{"click_offset": [408, 173]}],
+                "play": [{"click_offset": [512, 524]}],
+            },
+        }
+    )
+
+    assert config.window_position == (0, 25)
+    assert config.window_size == (1328, 760)
+    assert config.prepare_actions[0].click_offset == (408, 173)
+    assert config.play_actions[0].click_offset == (512, 524)
+
+
 def test_parse_region_accepts_comma_string() -> None:
     assert parse_region("1,2,300,400") == (1, 2, 300, 400)
 
@@ -66,3 +92,13 @@ def test_parse_region_rejects_bad_format() -> None:
 def test_parse_config_rejects_action_with_image_and_click() -> None:
     with pytest.raises(ConfigError, match="exactly one"):
         parse_config({"actions": {"prepare": [{"image": "plus.png", "click": [1, 2]}]}})
+
+
+def test_parse_config_rejects_invalid_window_size() -> None:
+    with pytest.raises(ConfigError, match="positive"):
+        parse_config({"window": {"size": [0, 760]}})
+
+
+def test_parse_config_rejects_invalid_select_all_flag() -> None:
+    with pytest.raises(ConfigError, match="true or false"):
+        parse_config({"select_all_before_paste": "yes"})

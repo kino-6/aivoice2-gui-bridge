@@ -83,12 +83,17 @@ app_name: "Config App"
 confidence: 0.85
 timeout: 5
 activation_delay: 0.5
+post_paste_delay: 0.9
+select_all_before_paste: true
 region: "1,2,300,400"
+window:
+  position: [0, 25]
+  size: [1328, 760]
 actions:
   prepare:
-    - click: [10, 20]
+    - click_offset: [10, 20]
   play:
-    - click: [30, 40]
+    - click_offset: [30, 40]
 """,
         encoding="utf-8",
     )
@@ -127,14 +132,18 @@ actions:
     assert captured["confidence"] == 0.7
     assert captured["timeout"] == 2.0
     assert captured["activation_delay"] == 1.0
+    assert captured["post_paste_delay"] == 0.9
+    assert captured["select_all_before_paste"] is True
     assert captured["region"] == (5, 6, 700, 800)
+    assert captured["window_position"] == (0, 25)
+    assert captured["window_size"] == (1328, 760)
     assert captured["text"] == "こんにちは"
 
 
 def test_required_image_assets_ignores_coordinate_actions() -> None:
     required = cli._required_image_assets(
-        (GuiAction(click=(10, 20)),),
-        (GuiAction(click=(30, 40)),),
+        (GuiAction(click=(10, 20)), GuiAction(click_offset=(15, 25))),
+        (GuiAction(click=(30, 40)), GuiAction(click_offset=(35, 45))),
     )
 
     assert required == ()

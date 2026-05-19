@@ -21,3 +21,15 @@ class PlatformController(Protocol):
 
     def permission_guidance(self) -> str:
         """Return platform-specific setup and permission guidance."""
+
+    def set_window_bounds(
+        self,
+        app_name: str,
+        *,
+        position: tuple[int, int] | None = None,
+        size: tuple[int, int] | None = None,
+    ) -> None:
+        """Set the app window position and/or size."""
+
+    def get_window_origin(self, app_name: str) -> tuple[int, int]:
+        """Return the app window's top-left screen position."""

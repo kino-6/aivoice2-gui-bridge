@@ -40,15 +40,16 @@ After granting permissions in System Settings, restart the terminal or IDE.
 uv sync
 ```
 
-For personal/local use, fixed coordinates are usually the easiest setup. Copy
-the example config and adjust the coordinates for your A.I.VOICE2 window:
+For personal/local use, window-relative coordinates are usually the easiest
+setup. Copy the example config and adjust the offsets for your A.I.VOICE2
+window:
 
 ```sh
 cp aivoice2-gui-bridge.example.yml aivoice2-gui-bridge.yml
 ```
 
 `aivoice2-gui-bridge.yml` is gitignored because coordinates are specific to
-your display, window position, and scaling.
+your display, window size, and scaling.
 
 Image matching is still supported, but it requires local screenshots of
 A.I.VOICE2 buttons. Those images are not included in this repository because UI
@@ -60,7 +61,7 @@ Quick start checklist:
 2. Grant Accessibility and Screen Recording permission to the terminal/IDE that runs `uv run`.
 3. Start A.I.VOICE2 Editor and select the voice preset manually.
 4. Copy `aivoice2-gui-bridge.example.yml` to `aivoice2-gui-bridge.yml`.
-5. Adjust the `click: [x, y]` coordinates for your A.I.VOICE2 window.
+5. Adjust `window.position`, `window.size`, and `click_offset: [x, y]` values for your A.I.VOICE2 window.
 6. Run `uv run aivoice2-gui-bridge doctor`.
 
 ## Usage
@@ -152,8 +153,9 @@ returns `("command", "v")`; `WindowsPlatformController` is a small placeholder
 that returns `("ctrl", "v")` and raises a clear unsupported error for activation.
 
 The action execution layer runs configured actions. Image actions go through
-the PyAutoGUI/OpenCV image locator, while coordinate fallback actions click
-absolute screen coordinates.
+the PyAutoGUI/OpenCV image locator, absolute `click` actions click screen
+coordinates directly, and `click_offset` actions click relative to the
+A.I.VOICE2 window's top-left corner.
 
 ## Config File
 
@@ -188,11 +190,16 @@ Example coordinate-based config:
 ```yaml
 app_name: "AIVoice2"
 activation_delay: 0.5
+post_paste_delay: 0.8
+select_all_before_paste: true
+window:
+  position: [0, 25]
+  size: [1328, 760]
 actions:
   prepare:
-    - click: [408, 198]
+    - click_offset: [408, 173]
   play:
-    - click: [519, 532]
+    - click_offset: [512, 524]
 ```
 
 ## How To Tune Image Matching
@@ -243,27 +250,36 @@ the command, then restart that app.
 
 ## Using Fixed Coordinates As A Fallback
 
-For this local/personal bridge, fixed coordinates are often preferable to image
-assets because they are simple text and do not require managing screenshots in
-git. Define them in `aivoice2-gui-bridge.yml`:
+For this local/personal bridge, coordinates are often preferable to image assets
+because they are simple text and do not require managing screenshots in git.
+The most stable coordinate mode is `click_offset`, which clicks relative to the
+A.I.VOICE2 window after optionally moving/resizing it:
 
 ```yaml
+window:
+  position: [0, 25]
+  size: [1328, 760]
 actions:
   prepare:
-    - click: [100, 200]
-    - click: [140, 200]
+    - click_offset: [408, 173]
   play:
-    - click: [500, 800]
+    - click_offset: [512, 524]
 ```
 
-Coordinates are absolute screen pixels, so they are sensitive to window
-position, display arrangement, and scaling. Keep the A.I.VOICE2 window in a
-consistent location when using this mode.
+`window.position` and `window.size` make the A.I.VOICE2 window deterministic.
+`click_offset` values are measured from the window's top-left corner. Absolute
+`click: [x, y]` is still supported, but it is more sensitive to window position,
+display arrangement, and scaling.
+
+`post_paste_delay` waits briefly after pasting text before clicking play. This
+helps when A.I.VOICE2 needs a moment to update its accent/preview state.
+`select_all_before_paste` replaces the current text instead of appending to it
+after the input field has focus.
 
 The tradeoff is straightforward: coordinates are easy to version as an example
-and easy to keep local, but they depend on your window position. Image matching
-is more flexible when the window moves, but the PNG assets are local binary
-files and can be awkward to review or share.
+and easy to keep local, but they depend on your window size/layout. Image
+matching is more flexible when the window moves, but the PNG assets are local
+binary files and can be awkward to review or share.
 
 ## Python API
 
@@ -297,6 +313,11 @@ permission to the terminal, IDE, or Python runner and restart it.
 
 If clicks or paste do not happen, grant Accessibility permission to the same
 launcher app and restart it.
+
+If the CLI prints normal-looking logs such as `Clicking preparation coordinates`
+and `Pasting text into A.I.VOICE2` but nothing changes on screen, the usual
+cause is Accessibility permission. Grant it to the exact app running
+`uv run`, such as Terminal, Ghostty, VS Code, or Codex, then restart that app.
 
 If clipboard restore fails, the text may still have been pasted. Use
 `--no-restore-clipboard` when you prefer simpler clipboard behavior.

@@ -19,10 +19,12 @@ class GuiAction:
 
     image: str | None = None
     click: ClickPoint | None = None
+    click_offset: ClickPoint | None = None
 
     def __post_init__(self) -> None:
-        if (self.image is None) == (self.click is None):
-            raise ConfigError("Each action must define exactly one of 'image' or 'click'.")
+        defined = sum(value is not None for value in (self.image, self.click, self.click_offset))
+        if defined != 1:
+            raise ConfigError("Each action must define exactly one of 'image', 'click', or 'click_offset'.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +34,11 @@ class BridgeConfig:
     confidence: float | None = None
     timeout: float | None = None
     activation_delay: float | None = None
+    post_paste_delay: float | None = None
+    select_all_before_paste: bool | None = None
     region: Region | None = None
+    window_position: ClickPoint | None = None
+    window_size: ClickPoint | None = None
     prepare_actions: Sequence[GuiAction] = field(default_factory=tuple)
     play_actions: Sequence[GuiAction] = field(default_factory=tuple)
 
@@ -81,6 +87,11 @@ def parse_config(raw: Mapping[str, Any], *, base_dir: Path | None = None) -> Bri
         actions = {}
     if not isinstance(actions, Mapping):
         raise ConfigError("'actions' must be a mapping.")
+    window = raw.get("window", {})
+    if window is None:
+        window = {}
+    if not isinstance(window, Mapping):
+        raise ConfigError("'window' must be a mapping.")
 
     assets_dir = _optional_path(raw.get("assets_dir"), base_dir=base_dir)
     return BridgeConfig(
@@ -89,7 +100,11 @@ def parse_config(raw: Mapping[str, Any], *, base_dir: Path | None = None) -> Bri
         confidence=_optional_float(raw.get("confidence"), "confidence"),
         timeout=_optional_float(raw.get("timeout"), "timeout"),
         activation_delay=_optional_float(raw.get("activation_delay"), "activation_delay"),
+        post_paste_delay=_optional_float(raw.get("post_paste_delay"), "post_paste_delay"),
+        select_all_before_paste=_optional_bool(raw.get("select_all_before_paste"), "select_all_before_paste"),
         region=parse_region(raw["region"]) if "region" in raw and raw["region"] is not None else None,
+        window_position=_parse_optional_point(window.get("position"), "window.position"),
+        window_size=_parse_optional_size(window.get("size"), "window.size"),
         prepare_actions=tuple(_parse_actions(actions.get("prepare", ()), "actions.prepare")),
         play_actions=tuple(_parse_actions(actions.get("play", ()), "actions.play")),
     )
@@ -129,13 +144,16 @@ def _parse_actions(value: Any, label: str) -> Sequence[GuiAction]:
             raise ConfigError(f"'{item_label}' must be a mapping.")
         has_image = "image" in item
         has_click = "click" in item
-        if has_image == has_click:
-            raise ConfigError(f"'{item_label}' must define exactly one of 'image' or 'click'.")
+        has_click_offset = "click_offset" in item
+        if sum((has_image, has_click, has_click_offset)) != 1:
+            raise ConfigError(f"'{item_label}' must define exactly one of 'image', 'click', or 'click_offset'.")
 
         if has_image:
             actions.append(GuiAction(image=_required_str(item["image"], f"{item_label}.image")))
-        else:
+        elif has_click:
             actions.append(GuiAction(click=_parse_click(item["click"], f"{item_label}.click")))
+        else:
+            actions.append(GuiAction(click_offset=_parse_click(item["click_offset"], f"{item_label}.click_offset")))
     return actions
 
 
@@ -147,6 +165,21 @@ def _parse_click(value: Any, label: str) -> ClickPoint:
     except (TypeError, ValueError) as exc:
         raise ConfigError(f"'{label}' must contain integer coordinates.") from exc
     return (x, y)
+
+
+def _parse_optional_point(value: Any, label: str) -> ClickPoint | None:
+    if value is None:
+        return None
+    return _parse_click(value, label)
+
+
+def _parse_optional_size(value: Any, label: str) -> ClickPoint | None:
+    if value is None:
+        return None
+    width, height = _parse_click(value, label)
+    if width <= 0 or height <= 0:
+        raise ConfigError(f"'{label}' width and height must be positive.")
+    return (width, height)
 
 
 def _optional_path(value: Any, *, base_dir: Path) -> Path | None:
@@ -171,6 +204,14 @@ def _optional_str(value: Any, label: str) -> str | None:
     if value is None:
         return None
     return _required_str(value, label)
+
+
+def _optional_bool(value: Any, label: str) -> bool | None:
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ConfigError(f"'{label}' must be true or false.")
+    return value
 
 
 def _required_str(value: Any, label: str) -> str:
